@@ -63,13 +63,10 @@ void OCR_App::renderMainWindowBar()
 {
     if(ImGui::BeginMainMenuBar())
     {
-        if (ImGui::BeginMenu("Patterns"))
+        if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::Selectable("Clear Paterns"))
-            {
-                m_charactersPatterns.clear();
-            }
-            if (ImGui::Selectable("Load Paterns"))
+            
+            if (ImGui::Selectable("Load Patterns"))
             {
                 NFD::UniquePath path;
                 if (NFD::OpenDialog(path, characterPatternsFileFilters, characterPatternsFileFiltersCount) == NFD_OKAY)
@@ -78,6 +75,9 @@ void OCR_App::renderMainWindowBar()
                     m_isOpen_LoadFileResult = true;
                 }
             }
+
+            ImGui::Spacing();
+
             if (ImGui::Selectable("Save Patterns"))
             {
                 NFD::UniquePath path;
@@ -87,9 +87,27 @@ void OCR_App::renderMainWindowBar()
                 }
             }
 
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            if (ImGui::Selectable("Clear Patterns"))
+            {
+                m_charactersPatterns.clear();
+            }
+
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Edit"))
+        {
+            if (ImGui::Selectable("Patterns"))
+            {
+                //To do
+            }
+            
+            ImGui::EndMenu();
+        }
 
         ImGui::EndMainMenuBar();
     }
@@ -106,72 +124,101 @@ void OCR_App::renderMenuWindow()
     characterLabel.resize(1);
     characterLabel[0] = m_character;
 
-    if (ImGui::BeginCombo("Character", characterLabel.c_str()))
-    {
-        for (char character = '0'; character <= '9'; character++)
-        {
-            characterLabel[0] = character;
-
-            if (ImGui::Selectable(characterLabel.c_str()))
-            {
-                m_character = character;
-            }
-        }
-
-        ImGui::EndCombo();
-    }
-
     ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
     if (ImGui::Button("Clear Canvas"))
     {
         clearCanvas();
     }
 
-    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-    if (ImGui::Button("Show Character Bounding Box"))
+    ImGui::NewLine();
+    ImGui::Separator();
+    
+    if (ImGui::BeginTabBar("WindowMenuTabBar"))
     {
-        sf::Rect<uint32_t> m_rect = getRectOfCharacter();
-        //std::cout << m_rect.left << " | " << m_rect.top << " | " << m_rect.width << " | " << m_rect.height << std::endl;
-
-
-        sf::Vector2f canvasPosition = m_canvasRect.getPosition();
-
-        m_boundingBoxVertexArray.clear();
-        m_boundingBoxVertexArray.resize(5);
-        m_boundingBoxVertexArray[0] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left, canvasPosition.y + m_rect.top), sf::Color::Red);
-        m_boundingBoxVertexArray[1] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left + m_rect.width, canvasPosition.y + m_rect.top), sf::Color::Red);
-        m_boundingBoxVertexArray[2] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left + m_rect.width, canvasPosition.y + m_rect.top + m_rect.height), sf::Color::Red);
-        m_boundingBoxVertexArray[3] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left, canvasPosition.y + m_rect.top + m_rect.height), sf::Color::Red);
-        m_boundingBoxVertexArray[4] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left, canvasPosition.y + m_rect.top), sf::Color::Red);
+        if (ImGui::TabItemButton("Recognition"))
+        {
+            m_currentTab = WindowMenuTab::Recognize;
+        }
+        if (ImGui::TabItemButton("Add Pattern"))
+        {
+            m_currentTab = WindowMenuTab::Add;
+        }
+        ImGui::EndTabBar();
     }
+    
 
-    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-    /*
-    if (ImGui::Button("Binaryzuj"))
+    switch (m_currentTab)
     {
-        sf::Rect<uint32_t> m_rect = getRectOfCharacter();
+        case OCR_App::WindowMenuTab::Recognize:
+        {
+            ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+            /*
+            if (ImGui::Button("Binaryzuj"))
+            {
+                sf::Rect<uint32_t> m_rect = getRectOfCharacter();
 
-        std::bitset<64> bitset = generateCharacterBinaryImage();
+                std::bitset<64> bitset = generateCharacterBinaryImage();
 
-        std::cout << bitset << std::endl;
-    }
-    */
-    if (ImGui::Button("Recognize"))
-    {
-        m_recognizedCharacter = recognize(generateCharacterBinaryImage());
+                std::cout << bitset << std::endl;
+            }
+            */
+            if (ImGui::Button("Recognize"))
+            {
+                m_recognizedCharacter = recognize(generateCharacterBinaryImage());
 
-        m_isOpen_RecognitionResultModal = true;
-    }
+                m_isOpen_RecognitionResultModal = true;
+            }
 
-    ImGui::NewLine();
-    ImGui::NewLine();
-    ImGui::NewLine();
-    ImGui::NewLine();
-    ImGui::NewLine();
 
-    if (ImGui::Button("Add Pattern For Current Character"))
-    {
-        m_charactersPatterns[m_character].push_back(generateCharacterBinaryImage());
+            break;
+        }
+        case OCR_App::WindowMenuTab::Add:
+        {
+            ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+            if (ImGui::Button("Show Character Bounding Box"))
+            {
+                sf::Rect<uint32_t> m_rect = getRectOfCharacter();
+                //std::cout << m_rect.left << " | " << m_rect.top << " | " << m_rect.width << " | " << m_rect.height << std::endl;
+
+
+                sf::Vector2f canvasPosition = m_canvasRect.getPosition();
+
+                m_boundingBoxVertexArray.clear();
+                m_boundingBoxVertexArray.resize(5);
+                m_boundingBoxVertexArray[0] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left, canvasPosition.y + m_rect.top), sf::Color::Red);
+                m_boundingBoxVertexArray[1] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left + m_rect.width, canvasPosition.y + m_rect.top), sf::Color::Red);
+                m_boundingBoxVertexArray[2] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left + m_rect.width, canvasPosition.y + m_rect.top + m_rect.height), sf::Color::Red);
+                m_boundingBoxVertexArray[3] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left, canvasPosition.y + m_rect.top + m_rect.height), sf::Color::Red);
+                m_boundingBoxVertexArray[4] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left, canvasPosition.y + m_rect.top), sf::Color::Red);
+            }
+
+            ImGui::NewLine();
+            ImGui::NewLine();
+            
+            if (ImGui::BeginCombo("Character", characterLabel.c_str()))
+            {
+                for (char character = '0'; character <= '9'; character++)
+                {
+                    characterLabel[0] = character;
+
+                    if (ImGui::Selectable(characterLabel.c_str()))
+                    {
+                        m_character = character;
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
+
+            
+
+            if (ImGui::Button("Add Pattern For Current Character"))
+            {
+                m_charactersPatterns[m_character].push_back(generateCharacterBinaryImage());
+            }
+
+            break;
+        }
     }
 
     ImGui::End();
