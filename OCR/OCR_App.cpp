@@ -130,6 +130,14 @@ void OCR_App::renderMenuWindow()
         clearCanvas();
     }
 
+    binaryImagePreview(generateCharacterBinaryImage(), ImVec2(100, 100));
+
+    if (binaryImageButton("##binaryImagePreview", generateCharacterBinaryImage(), ImVec2(100, 100)))
+    {
+        std::cout << "Click" << std::endl;
+    }
+
+
     ImGui::NewLine();
     ImGui::Separator();
     
@@ -342,6 +350,70 @@ void OCR_App::renderModals()
     */
 }
 
+void OCR_App::binaryImagePreview(const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& image, const ImVec2& size)
+{
+    const ImVec2 cellSize(size.x / BINARY_IMAGE_WIDTH, size.y / BINARY_IMAGE_HEIGHT);
+
+    const ImVec2 startCursorPos = ImGui::GetCursorScreenPos();
+
+    ImGui::ItemSize(ImRect(startCursorPos, ImVec2(startCursorPos.x + size.x, startCursorPos.y + size.y)));
+
+    ImVec2 cursorPos = startCursorPos;
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    for (size_t cellY = 0; cellY < BINARY_IMAGE_HEIGHT; cellY++)
+    {
+        for (size_t cellX = 0; cellX < BINARY_IMAGE_WIDTH; cellX++)
+        {
+            const ImU32* cellColor = nullptr;
+
+            if (image[cellY + (cellX * BINARY_IMAGE_HEIGHT)])
+            {
+                cellColor = &binaryImageViewColor;
+            }
+            else
+            {
+                cellColor = &binaryImageViewBackgroundColor;
+            }
+
+            draw_list->AddRectFilled(ImVec2(cursorPos.x, cursorPos.y), ImVec2(cursorPos.x + cellSize.x, cursorPos.y + cellSize.y), *cellColor);
+
+            cursorPos.x += cellSize.x;
+        }
+
+        cursorPos.x = startCursorPos.x;
+        cursorPos.y += cellSize.y;
+    }
+}
+
+bool OCR_App::binaryImageButton(const char* id, const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& image, const ImVec2& size)
+{
+    ImVec2 imageSize = size;
+    imageSize.x *= 0.9;
+    imageSize.y *= 0.9;
+
+
+    ImVec2 imageStartCursorPos = ImGui::GetCursorScreenPos();
+    imageStartCursorPos.x += (size.x - imageSize.x) / 2;
+    imageStartCursorPos.y += (size.y - imageSize.y) / 2;
+
+    bool buttonResult = ImGui::Button(id, ImVec2(size));
+
+
+    ImVec2 buttonEndCursorPos = ImGui::GetCursorScreenPos();
+
+
+    ImGui::SetCursorScreenPos(imageStartCursorPos);
+
+    binaryImagePreview(image, imageSize);
+
+    ImGui::SetCursorScreenPos(buttonEndCursorPos);
+
+
+    return buttonResult;
+}
+
 void OCR_App::configureGUI()
 {
     m_menuWindowWidthInPixels = (m_menuWindowSizePercentage / 100) * m_window.getSize().x;
@@ -463,39 +535,30 @@ void OCR_App::drawLine(sf::Image& targetImage, sf::Vector2f pointA, sf::Vector2f
     }
 }
 
-uint64_t OCR_App::generateCharacterBinaryImage()
+std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> OCR_App::generateCharacterBinaryImage()
 {
-    uint64_t value = 0;
-
-    //this value must be 8
-    uint8_t m_binaryImageResolution = 8;
-
     sf::Rect<uint32_t> characterRect = getRectOfCharacter();
 
-    float cellWidth = (float)(characterRect.width + 1) / m_binaryImageResolution;
-    float cellHeight = (float)(characterRect.height + 1) / m_binaryImageResolution;
+    float cellWidth = (float)(characterRect.width + 1) / BINARY_IMAGE_WIDTH;
+    float cellHeight = (float)(characterRect.height + 1) / BINARY_IMAGE_HEIGHT;
 
-    std::bitset<64> bitset;
+    std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> bitset;
 
-    for (size_t cellY = 0; cellY < m_binaryImageResolution; cellY++)
+    for (size_t cellY = 0; cellY < BINARY_IMAGE_HEIGHT; cellY++)
     {
-        for (size_t cellX = 0; cellX < m_binaryImageResolution; cellX++)
+        for (size_t cellX = 0; cellX < BINARY_IMAGE_WIDTH; cellX++)
         {
             if (!getBinaryImageCellValue(m_canvasImage, sf::Rect<uint32_t>(characterRect.left + (cellWidth * cellX), characterRect.top + (cellHeight * cellY), cellWidth, cellHeight)))
             {
-                //std::cout << '0';
-                bitset.set(cellY + (cellX * m_binaryImageResolution), false);
+                bitset.set(cellY + (cellX * BINARY_IMAGE_WIDTH), false);
                 continue;
             }
 
-            bitset.set(cellY + (cellX * m_binaryImageResolution), true);
-            //std::cout << '1';
+            bitset.set(cellY + (cellX * BINARY_IMAGE_HEIGHT), true);
         }
-
-        //std::cout << std::endl;
     }
 
-    return bitset.to_ullong();
+    return bitset;
 }
 
 bool OCR_App::getBinaryImageCellValue(const sf::Image& image, const sf::Rect<uint32_t>& cell)
@@ -557,43 +620,7 @@ sf::Rect<uint32_t> OCR_App::getRectOfCharacter() const
     return sf::Rect<uint32_t>(min.x, min.y, 1 + max.x - min.x, 1 + max.y - min.y);
 }
 
-void OCR_App::train(uint64_t binarydata)
-{
-    /*
-    std::bitset<64> bitset = binarydata;
-
-    std::vector<boost::numeric::ublas::vector<double>> trainingData;
-
-    trainingData.resize(1);
-    trainingData[0].resize(bitset.size());
-
-    for (size_t i = 0; i < bitset.size(); i++)
-    {
-        trainingData[0][i] = bitset[i];
-    }
-
-
-    //Initialize SOM object class
-    neuralnetworks::SelfOrganizingMaps obj(1, m_binaryImageResolution.x, m_binaryImageResolution.y);
-    puts("\nSOM Object initialization...done\n");
-
-    //Write to the SOM class object
-    obj.trainingData.swap(trainingData);
-    trainingData.clear();
-    puts("Train data written to SOM object");
-
-    //Weight Initialization
-    obj.weightsInitialization(0.1, 0.1);
-    puts("SOM Weights initialization...done");
-
-    //SOM TRAINING
-    //Use size/100 for bootstrap
-    obj.somTraining(100, 0.1);
-    puts("SOM Training...done");
-    */
-}
-
-char OCR_App::recognize(uint64_t binaryImage)
+char OCR_App::recognize(std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> binaryImage)
 {
     uint16_t smallestDifference = 64;
     char mostAccurateCharacter = 0;
@@ -602,8 +629,8 @@ char OCR_App::recognize(uint64_t binaryImage)
     {
         for (auto patternIterator = characterIterator->second.begin(); patternIterator != characterIterator->second.end(); patternIterator++)
         {
-            uint16_t difference = countDifferentBits(binaryImage, *patternIterator);
-            if (countDifferentBits(binaryImage, *patternIterator) > m_bitTolerance)
+            uint16_t difference = countInconsistentBits(binaryImage, *patternIterator);
+            if (countInconsistentBits(binaryImage, *patternIterator) > m_bitTolerance)
             {
                 continue;
             }
@@ -619,9 +646,9 @@ char OCR_App::recognize(uint64_t binaryImage)
     return mostAccurateCharacter;
 }
 
-uint16_t OCR_App::countDifferentBits(uint64_t a, uint64_t b) const
+uint32_t OCR_App::countInconsistentBits(const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& a, const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& b) const
 {
-    std::bitset<64> bits = a ^ b;
+    std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> bits = a ^ b;
     return bits.count();
 }
 
@@ -734,3 +761,7 @@ bool OCR_App::isOpen() const
 {
 	return m_window.isOpen();
 }
+
+
+ImU32 OCR_App::binaryImageViewColor(ImColor(0, 0, 0, 255));
+ImU32 OCR_App::binaryImageViewBackgroundColor(ImColor(255, 255, 255, 255));

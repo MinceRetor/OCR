@@ -6,7 +6,12 @@
 #include <unordered_map>
 #include <nfd.hpp>
 #include <fstream>
+#include <iostream>
+#include <imgui_internal.h>
 
+#define BINARY_IMAGE_WIDTH 10
+#define BINARY_IMAGE_HEIGHT 10
+#define MAX_INCONSISTENT_BITS 25
 
 class OCR_App
 {
@@ -52,9 +57,19 @@ private:
 	float m_menuWindowSizePercentage;
 	float m_menuWindowWidthInPixels;
 
-	sf::Vector2u m_binaryImageResolution;
+	std::unordered_map<char, std::vector<std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>>> m_charactersPatterns;
 
-	std::unordered_map<char, std::vector<uint64_t>> m_charactersPatterns;
+
+
+	static ImU32 binaryImageViewColor;
+	static ImU32 binaryImageViewBackgroundColor;
+
+
+
+
+
+
+
 
 	void handleEvents();
 
@@ -63,24 +78,24 @@ private:
 	void renderMenuWindow();
 	void renderModals();
 
+	void binaryImagePreview(const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& image, const ImVec2& size);
+	bool binaryImageButton(const char* id, const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& image, const ImVec2& size);
+
 	void configureGUI();
 	void clearCanvas();
 
 	void handleDrawing();
 	void drawLine(sf::Image& targetImage, sf::Vector2f pointA, sf::Vector2f pointB);
 
-	uint64_t generateCharacterBinaryImage();
+	std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> generateCharacterBinaryImage();
 
 	bool getBinaryImageCellValue(const sf::Image& image, const sf::Rect<uint32_t>& cell);
 
 	sf::Rect<uint32_t> getRectOfCharacter() const;
 
-	void train(uint64_t binarydata);
+	char recognize(std::bitset<BINARY_IMAGE_WIDTH * BINARY_IMAGE_HEIGHT> binaryImage);
 
-
-	char recognize(uint64_t binaryImage);
-
-	uint16_t countDifferentBits(uint64_t a, uint64_t b) const;
+	uint32_t countInconsistentBits(const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& a, const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& b) const;
 
 	bool loadPatterns(const char* path);
 	bool savePatterns(const char* path) const;
