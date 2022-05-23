@@ -264,7 +264,7 @@ void OCR_App::renderPatternsWindow()
         ImVec2 windowContentRegionMax = ImGui::GetWindowContentRegionMax();
         ImVec2 windowContentSize(windowContentRegionMax.x - windowContentRegionMin.x, windowContentRegionMax.y - windowContentRegionMin.y);
 
-        if (ImGui::BeginChild("##PatternsWindowCharactersList", ImVec2(windowContentSize.x * 0.1, windowContentSize.y)))
+        if (ImGui::BeginChild("##PatternsWindowCharactersList", ImVec2(windowContentSize.x * 0.1, windowContentSize.y), true))
         {
             char characterString[2];
             characterString[1] = 0;
@@ -290,27 +290,31 @@ void OCR_App::renderPatternsWindow()
 
         ImGui::SameLine();
 
-        if (m_patternsWindowSelectedCharacter != 0 && ImGui::BeginChild("##PatternsWindowCharacter", ImVec2(windowContentSize.x * 0.9, windowContentSize.y)))
+        float patternsChildWindowWidth = windowContentSize.x * 0.89;
+
+        if (ImGui::BeginChild("##PatternsWindowCharacter", ImVec2(patternsChildWindowWidth, windowContentSize.y), true))
         {
-
-            auto& characterPatterns = m_charactersPatterns[m_patternsWindowSelectedCharacter];
-
-            const ImVec2 childWindowContextMax = ImGui::GetWindowContentRegionMax();
-
-            for (size_t i = 0; i != characterPatterns.size(); i++)
+            if (m_patternsWindowSelectedCharacter)
             {
-                ImVec2 cursorPos = ImGui::GetCursorPos();
+                auto& characterPatterns = m_charactersPatterns[m_patternsWindowSelectedCharacter];
 
-                if (cursorPos.x + m_binaryImagePreviewButtonSize.x < childWindowContextMax.x)
+
+                for (size_t i = 0; i != characterPatterns.size(); i++)
                 {
-                    ImGui::SameLine();
+                    ImVec2 cursorPos = ImGui::GetCursorPos();
+
+                    if (cursorPos.x + m_binaryImagePreviewButtonSize.x < patternsChildWindowWidth)
+                    {
+                        ImGui::SameLine();
+                    }
+
+                    std::string id = "##binaryImageButton";
+                    id += m_patternsWindowSelectedCharacter;
+                    id += std::to_string(i);
+                    binaryImageButton(id.c_str(), characterPatterns[i], m_binaryImagePreviewButtonSize);
+                    //binaryImagePreview(characterPatterns[i], m_binaryImagePreviewButtonSize);
                 }
 
-                std::string id = "##binaryImageButton";
-                id += m_patternsWindowSelectedCharacter;
-                id += std::to_string(i);
-                binaryImageButton(id.c_str(), characterPatterns[i], m_binaryImagePreviewButtonSize);
-                //binaryImagePreview(characterPatterns[i], m_binaryImagePreviewButtonSize);
             }
 
             ImGui::EndChild();
