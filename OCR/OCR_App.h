@@ -13,6 +13,8 @@
 #define BINARY_IMAGE_HEIGHT 10
 #define MAX_INCONSISTENT_BITS 25
 
+typedef std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> binaryImageType;
+
 class OCR_App
 {
 private:
@@ -39,6 +41,8 @@ private:
 
 	const char* defaultPatternsFilePath;
 
+
+	char m_patternsWindowSelectedCharacter;
 	char m_character;
 
 	char m_recognizedCharacter;
@@ -47,17 +51,20 @@ private:
 	uint8_t m_bitTolerance;
 
 	sf::Vector2f m_lastMousePositionInImage;
+	ImVec2 m_binaryImagePreviewButtonSize;
 
 	bool m_fileLoadedResult;
 	bool m_lastMousePositionInImageInitialized;
 	bool m_isOpen_RecognitionResultModal;
 	bool m_isOpen_LoadDefaultPatterns;
 	bool m_isOpen_LoadFileResult;
+	bool m_isOpen_PatternsWindow;
+	bool m_isOpen_StyleSettingsWindow;
 
 	float m_menuWindowSizePercentage;
 	float m_menuWindowWidthInPixels;
 
-	std::unordered_map<char, std::vector<std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>>> m_charactersPatterns;
+	std::unordered_map<char, std::vector<binaryImageType>> m_charactersPatterns;
 
 
 
@@ -76,10 +83,12 @@ private:
 
 	void renderMainWindowBar();
 	void renderMenuWindow();
+	void renderPatternsWindow();
+	void renderStyleSettingsWindow();
 	void renderModals();
 
-	void binaryImagePreview(const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& image, const ImVec2& size);
-	bool binaryImageButton(const char* id, const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& image, const ImVec2& size);
+	void binaryImagePreview(const binaryImageType& image, const ImVec2& size);
+	bool binaryImageButton(const char* id, const binaryImageType& image, const ImVec2& size);
 
 	void configureGUI();
 	void clearCanvas();
@@ -87,15 +96,15 @@ private:
 	void handleDrawing();
 	void drawLine(sf::Image& targetImage, sf::Vector2f pointA, sf::Vector2f pointB);
 
-	std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> generateCharacterBinaryImage();
+	binaryImageType generateCharacterBinaryImage();
 
 	bool getBinaryImageCellValue(const sf::Image& image, const sf::Rect<uint32_t>& cell);
 
 	sf::Rect<uint32_t> getRectOfCharacter() const;
 
-	char recognize(std::bitset<BINARY_IMAGE_WIDTH * BINARY_IMAGE_HEIGHT> binaryImage);
+	char recognize(const binaryImageType& binaryImage);
 
-	uint32_t countInconsistentBits(const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& a, const std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT>& b) const;
+	uint32_t countInconsistentBits(const binaryImageType& a, const binaryImageType& b) const;
 
 	bool loadPatterns(const char* path);
 	bool savePatterns(const char* path) const;
