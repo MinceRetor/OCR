@@ -258,70 +258,73 @@ void OCR_App::renderPatternsWindow()
         return;
     }
 
-    if (ImGui::Begin("Patterns##PatternsWindow", &m_isOpen_PatternsWindow))
+    ImGui::Begin("Patterns##PatternsWindow", &m_isOpen_PatternsWindow);
+
+    ImVec2 windowContentRegionMin = ImGui::GetWindowContentRegionMin();
+    ImVec2 windowContentRegionMax = ImGui::GetWindowContentRegionMax();
+    ImVec2 windowContentSize(windowContentRegionMax.x - windowContentRegionMin.x, windowContentRegionMax.y - windowContentRegionMin.y);
+
+    ImGui::BeginChild("##PatternsWindowCharactersList", ImVec2(windowContentSize.x * 0.1, windowContentSize.y), true);
+    char characterString[2];
+    characterString[1] = 0;
+
+    for (characterString[0] = '0'; characterString[0] <= '9'; characterString[0]++)
     {
-        ImVec2 windowContentRegionMin = ImGui::GetWindowContentRegionMin();
-        ImVec2 windowContentRegionMax = ImGui::GetWindowContentRegionMax();
-        ImVec2 windowContentSize(windowContentRegionMax.x - windowContentRegionMin.x, windowContentRegionMax.y - windowContentRegionMin.y);
-
-        if (ImGui::BeginChild("##PatternsWindowCharactersList", ImVec2(windowContentSize.x * 0.1, windowContentSize.y), true))
+        if (ImGui::Selectable(characterString))
         {
-            char characterString[2];
-            characterString[1] = 0;
-
-            for (characterString[0] = '0'; characterString[0] <= '9'; characterString[0]++)
-            {
-                if (ImGui::Selectable(characterString))
-                {
-                    m_patternsWindowSelectedCharacter = characterString[0];
-                }
-            }
-
-            for (characterString[0] = 'A'; characterString[0] <= 'Z'; characterString[0]++)
-            {
-                if (ImGui::Selectable(characterString))
-                {
-                    m_patternsWindowSelectedCharacter = characterString[0];
-                }
-            }
-
-            ImGui::EndChild();
+            m_patternsWindowSelectedCharacter = characterString[0];
         }
-
-        ImGui::SameLine();
-
-        float patternsChildWindowWidth = windowContentSize.x * 0.89;
-
-        if (ImGui::BeginChild("##PatternsWindowCharacter", ImVec2(patternsChildWindowWidth, windowContentSize.y), true))
-        {
-            if (m_patternsWindowSelectedCharacter)
-            {
-                auto& characterPatterns = m_charactersPatterns[m_patternsWindowSelectedCharacter];
-
-
-                for (size_t i = 0; i != characterPatterns.size(); i++)
-                {
-                    ImVec2 cursorPos = ImGui::GetCursorPos();
-
-                    if (cursorPos.x + m_binaryImagePreviewButtonSize.x < patternsChildWindowWidth)
-                    {
-                        ImGui::SameLine();
-                    }
-
-                    std::string id = "##binaryImageButton";
-                    id += m_patternsWindowSelectedCharacter;
-                    id += std::to_string(i);
-                    binaryImageButton(id.c_str(), characterPatterns[i], m_binaryImagePreviewButtonSize);
-                    //binaryImagePreview(characterPatterns[i], m_binaryImagePreviewButtonSize);
-                }
-
-            }
-
-            ImGui::EndChild();
-        }
-
-        ImGui::End();
     }
+
+    for (characterString[0] = 'A'; characterString[0] <= 'Z'; characterString[0]++)
+    {
+        if (ImGui::Selectable(characterString))
+        {
+            m_patternsWindowSelectedCharacter = characterString[0];
+        }
+    }
+
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    float patternsChildWindowWidth = windowContentSize.x * 0.85;
+
+
+    ImGui::BeginChild("##PatternsWindowCharacter", ImVec2(patternsChildWindowWidth, windowContentSize.y), true);
+    if (m_patternsWindowSelectedCharacter)
+    {
+        auto& characterPatterns = m_charactersPatterns[m_patternsWindowSelectedCharacter];
+
+        ImVec2 patternsChildWindowRegionMax = ImGui::GetWindowContentRegionMax();
+
+        float cursorPos = 0;
+
+        for (size_t i = 0; i != characterPatterns.size(); i++)
+        {
+            if (cursorPos + m_binaryImagePreviewButtonSize.x > patternsChildWindowWidth)
+            {
+                cursorPos = 0;
+            }
+            else if (i > 0)
+            {
+                ImGui::SameLine();
+            }
+
+            std::string id = "##binaryImageButton";
+            id += m_patternsWindowSelectedCharacter;
+            id += std::to_string(i);
+            binaryImageButton(id.c_str(), characterPatterns[i], m_binaryImagePreviewButtonSize);
+            //binaryImagePreview(characterPatterns[i], m_binaryImagePreviewButtonSize);
+
+            cursorPos += m_binaryImagePreviewButtonSize.x;
+        }
+
+    }
+
+    ImGui::EndChild();
+
+    ImGui::End();
 }
 
 void OCR_App::renderModals()
