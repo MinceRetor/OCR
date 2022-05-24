@@ -76,11 +76,21 @@ void OCR_App::renderMainWindowBar()
                 NFD::UniquePath path;
                 if (NFD::OpenDialog(path, characterPatternsFileFilters, characterPatternsFileFiltersCount) == NFD_OKAY)
                 {
+                    m_charactersPatterns.clear();
                     m_fileLoadedResult = loadPatterns(path.get(), &m_loadFileErrorMsg);
                     m_isOpen_LoadFileResult = true;
                 }
             }
 
+            if (ImGui::Selectable("Load Patterns Additive"))
+            {
+                NFD::UniquePath path;
+                if (NFD::OpenDialog(path, characterPatternsFileFilters, characterPatternsFileFiltersCount) == NFD_OKAY)
+                {
+                    m_fileLoadedResult = loadPatterns(path.get(), &m_loadFileErrorMsg);
+                    m_isOpen_LoadFileResult = true;
+                }
+            }
             
 
             if (ImGui::Selectable("Save Patterns"))
@@ -782,8 +792,6 @@ uint32_t OCR_App::countInconsistentBits(const binaryImageType& a, const binaryIm
 
 bool OCR_App::loadPatterns(const char* path, const char** errorMsg)
 {
-    m_charactersPatterns.clear();
-
     std::fstream file;
 
     file.open(path, std::ios::in | std::ios::ate | std::ios::binary);
@@ -860,8 +868,6 @@ bool OCR_App::loadPatterns(const char* path, const char** errorMsg)
 
         auto& characterPatterns = m_charactersPatterns[character];
 
-        characterPatterns.resize(patternCount);
-
         for (size_t patternIterator = 0; patternIterator < patternCount; patternIterator++)
         {
             std::string data;
@@ -871,7 +877,7 @@ bool OCR_App::loadPatterns(const char* path, const char** errorMsg)
             file.read(&data[0], data.size());
             filePos += data.size();
 
-            characterPatterns[patternIterator] = binaryImageType(data);
+            characterPatterns.push_back(binaryImageType(data));
         }
     }
 
