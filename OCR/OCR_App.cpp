@@ -17,11 +17,12 @@ OCR_App::OCR_App() :
     m_patternsWindowSelectedCharacter(0),
     m_bitTolerance(15),
     m_binaryImagePreviewButtonSize(100, 100),
-    defaultPatternsFilePath("defaultPatterns.cpf"),
+    m_defaultPatternsFilePath("defaultPatterns.cpf"),
     m_isOpen_RecognitionResultModal(false),
     m_isOpen_LoadDefaultPatterns(true),
     m_isOpen_PatternsWindow(false),
-    m_isOpen_StyleSettingsWindow(false)
+    m_isOpen_StyleSettingsWindow(false),
+    m_loadFileErrorMsg(nullptr)
 {
     m_window.setFramerateLimit(60);
     ImGui::SFML::Init(m_window);
@@ -75,7 +76,7 @@ void OCR_App::renderMainWindowBar()
                 NFD::UniquePath path;
                 if (NFD::OpenDialog(path, characterPatternsFileFilters, characterPatternsFileFiltersCount) == NFD_OKAY)
                 {
-                    m_fileLoadedResult = loadPatterns(path.get());
+                    m_fileLoadedResult = loadPatterns(path.get(), &m_loadFileErrorMsg);
                     m_isOpen_LoadFileResult = true;
                 }
             }
@@ -363,7 +364,7 @@ void OCR_App::renderModals()
         {
             if (ImGui::Button("Yes##LoadDefaultPatterns"))
             {
-                loadedDefaultPatternsStatus = loadPatterns(defaultPatternsFilePath);
+                loadedDefaultPatternsStatus = loadPatterns(m_defaultPatternsFilePath, &m_loadFileErrorMsg);
             }
 
             ImGui::SameLine();
@@ -383,6 +384,11 @@ void OCR_App::renderModals()
             else
             {
                 ImGui::TextColored(ImVec4(sf::Color::Red.r, sf::Color::Red.g, sf::Color::Red.b, 255), "Failed to load default patterns.");
+
+                if (m_loadFileErrorMsg != nullptr)
+                {
+                    ImGui::TextColored(ImVec4(sf::Color::Red.r, sf::Color::Red.g, sf::Color::Red.b, 255), m_loadFileErrorMsg);
+                }
             }
 
         }
@@ -400,6 +406,11 @@ void OCR_App::renderModals()
         else
         {
             ImGui::TextColored(ImVec4(sf::Color::Red.r, sf::Color::Red.g, sf::Color::Red.b, 255), "Failed to load patterns.");
+
+            if (m_loadFileErrorMsg != nullptr)
+            {
+                ImGui::TextColored(ImVec4(sf::Color::Red.r, sf::Color::Red.g, sf::Color::Red.b, 255), m_loadFileErrorMsg);
+            }
         }
 
         if (ImGui::IsMouseClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
@@ -541,7 +552,7 @@ void OCR_App::clearCanvas()
 
 void OCR_App::handleDrawing()
 {
-    if (m_isOpen_LoadDefaultPatterns || m_isOpen_RecognitionResultModal | m_isOpen_LoadFileResult)
+    if (m_isOpen_LoadDefaultPatterns || m_isOpen_RecognitionResultModal || m_isOpen_LoadFileResult || m_isOpen_StyleSettingsWindow || m_isOpen_PatternsWindow)
     {
         return;
     }
@@ -769,11 +780,8 @@ uint32_t OCR_App::countInconsistentBits(const binaryImageType& a, const binaryIm
     return bits.count();
 }
 
-bool OCR_App::loadPatterns(const char* path)
+bool OCR_App::loadPatterns(const char* path, const char** errorMsg)
 {
-    return false;
-
-    /*
     m_charactersPatterns.clear();
 
     std::fstream file;
@@ -782,6 +790,10 @@ bool OCR_App::loadPatterns(const char* path)
 
     if (!file.is_open() || !file.good())
     {
+        if (errorMsg != nullptr)
+        {
+            *errorMsg = "Failed to open file.";
+        }
         return false;
     }
 
@@ -791,6 +803,50 @@ bool OCR_App::loadPatterns(const char* path)
     char character = 0;
     uint32_t patternCount = 0;
     size_t filePos = 0;
+
+
+    if (filePos + 3 + (2 * sizeof(uint32_t)) >= fileSize)
+    {
+        if (errorMsg != nullptr)
+        {
+            *errorMsg = "Failed to read file header.";
+        }
+        return false;
+    }
+
+    std::vector<char> fileType(3);
+
+    file.read(fileType.data(), 3);
+    filePos += 3;
+
+
+    if (std::string(fileType.data()) == "CPF")
+    {
+        if (errorMsg != nullptr)
+        {
+            *errorMsg = "File is not a CPF file.";
+        }
+        return false;
+    }
+
+
+    uint32_t binaryImageWidth = 0;
+    uint32_t binaryImageHeight = 0;
+
+    file.read((char*)&binaryImageWidth, sizeof(uint32_t));
+    file.read((char*)&binaryImageHeight, sizeof(uint32_t));
+    filePos += sizeof(uint32_t);
+    filePos += sizeof(uint32_t);
+
+
+    if (binaryImageWidth != BINARY_IMAGE_WIDTH || binaryImageHeight != BINARY_IMAGE_HEIGHT)
+    {
+        if (errorMsg != nullptr)
+        {
+            *errorMsg = "Patterns saved in file has different resolution than this program version use.";
+        }
+        return false;
+    }
 
 
     while (filePos < fileSize)
@@ -808,9 +864,14 @@ bool OCR_App::loadPatterns(const char* path)
 
         for (size_t patternIterator = 0; patternIterator < patternCount; patternIterator++)
         {
-            uint64_t pattern = 0;
-            file.read((char*)&characterPatterns[patternIterator], sizeof(uint64_t));
-            filePos += sizeof(uint64_t);
+            std::string data;
+            data.resize(BINARY_IMAGE_WIDTH * BINARY_IMAGE_HEIGHT);
+
+
+            file.read(&data[0], data.size());
+            filePos += data.size();
+
+            characterPatterns[patternIterator] = binaryImageType(data);
         }
     }
 
@@ -818,14 +879,10 @@ bool OCR_App::loadPatterns(const char* path)
 
 
     return true;
-    */
 }
 
 bool OCR_App::savePatterns(const char* path) const
 {
-    return false;
-
-    /*
     std::fstream file;
 
     file.open(path, std::ios::out | std::ios::beg | std::ios::binary | std::ios::trunc);
@@ -834,6 +891,13 @@ bool OCR_App::savePatterns(const char* path) const
     {
         return false;
     }
+
+    static const uint32_t binaryImageWidth = BINARY_IMAGE_WIDTH;
+    static const uint32_t binaryImageHeight = BINARY_IMAGE_HEIGHT;
+
+    file.write("CPF", 3);
+    file.write((const char*)&binaryImageWidth, sizeof(uint32_t));
+    file.write((const char*)&binaryImageHeight, sizeof(uint32_t));
 
 
     for (auto characterIterator = m_charactersPatterns.begin(); characterIterator != m_charactersPatterns.end(); characterIterator++)
@@ -845,14 +909,14 @@ bool OCR_App::savePatterns(const char* path) const
 
         for (auto patternIterator = characterIterator->second.begin(); patternIterator != characterIterator->second.end(); patternIterator++)
         {
-            file.write((const char*)&*patternIterator, sizeof(uint64_t));
+            std::string data = patternIterator->to_string();
+            file.write(data.data(), data.size());
         }
     }
 
     file.close();
 
     return true;
-    */
 }
 
 void OCR_App::update()

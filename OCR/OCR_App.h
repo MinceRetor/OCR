@@ -19,12 +19,6 @@ class OCR_App
 {
 private:
 
-	enum class WindowMenuTab
-	{
-		Recognize,
-		Add
-	};
-
 	sf::RenderWindow m_window;
 	sf::Texture m_canvasTexture;
 	sf::Image m_canvasImage;
@@ -37,10 +31,8 @@ private:
 
 	sf::VertexArray m_boundingBoxVertexArray;
 
-	WindowMenuTab m_currentTab;
-
-	const char* defaultPatternsFilePath;
-
+	const char* m_defaultPatternsFilePath;
+	const char* m_loadFileErrorMsg;
 
 	char m_patternsWindowSelectedCharacter;
 	char m_character;
@@ -106,7 +98,7 @@ private:
 
 	uint32_t countInconsistentBits(const binaryImageType& a, const binaryImageType& b) const;
 
-	bool loadPatterns(const char* path);
+	bool loadPatterns(const char* path, const char** errorMsg = nullptr);
 	bool savePatterns(const char* path) const;
 
 public:
