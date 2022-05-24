@@ -565,6 +565,56 @@ void OCR_App::configureGUI()
     m_canvasRect.setPosition(sf::Vector2f(contentSize.x - (contentSize.x / 2) - (m_canvasRect.getSize().x / 2), contentSize.y - (contentSize.y / 2) - (m_canvasRect.getSize().y / 2)));
 
     m_canvasRect.setTexture(&m_canvasTexture, true);
+
+    ImGuiStyle& style = ImGui::GetStyle();
+
+
+    style.Colors[ImGuiCol_::ImGuiCol_Border] =                  ImColor(255, 0, 0, 128);
+    style.Colors[ImGuiCol_::ImGuiCol_BorderShadow] =            ImColor(0, 0, 0, 0);
+    style.Colors[ImGuiCol_::ImGuiCol_Button] =                  ImColor(255, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_ButtonActive] =            ImColor(149, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_ButtonHovered] =           ImColor(255, 76, 76, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_CheckMark] =               ImColor(255, 255, 255, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ChildBg] =                 ImColor(0, 0, 0, 0);
+    style.Colors[ImGuiCol_::ImGuiCol_DragDropTarget] =          ImColor(0, 0, 0, 230);
+    style.Colors[ImGuiCol_::ImGuiCol_FrameBg] =                 ImColor(255, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_FrameBgActive] =           ImColor(149, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_FrameBgHovered] =          ImColor(255, 76, 76, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_Header] =                  ImColor(255, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_HeaderActive] =            ImColor(149, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_HeaderHovered] =           ImColor(255, 76, 76, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_MenuBarBg] =               ImColor(80, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ModalWindowDimBg] =        ImColor(255, 255, 255, 89);
+    style.Colors[ImGuiCol_::ImGuiCol_NavHighlight] =            ImColor(0, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_NavWindowingHighlight] =   ImColor(0, 0, 0, 179);
+    style.Colors[ImGuiCol_::ImGuiCol_PlotHistogramHovered] =    ImColor(0, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_PlotLines] =               ImColor(0, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_PopupBg] =                 ImColor(80, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ResizeGrip] =              ImColor(184, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ResizeGripActive] =        ImColor(93, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ResizeGripHovered] =       ImColor(100, 62, 62, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ScrollbarBg] =             ImColor(5, 5, 5, 135);
+    style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrab] =           ImColor(79, 79, 79, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabActive] =     ImColor(130, 130, 130, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabHovered] =    ImColor(105, 105, 105, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_Separator] =               ImColor(178, 0, 0, 128);
+    style.Colors[ImGuiCol_::ImGuiCol_SeparatorActive] =         ImColor(26, 102, 191, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_SeparatorHovered] =        ImColor(26, 102, 191, 199);
+    style.Colors[ImGuiCol_::ImGuiCol_SliderGrab] =              ImColor(61, 133, 224, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_SliderGrabActive] =        ImColor(66, 150, 250, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_Tab] =                     ImColor(0, 0, 0, 220);
+    style.Colors[ImGuiCol_::ImGuiCol_TabActive] =               ImColor(51, 105, 173, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TabHovered] =              ImColor(66, 150, 250, 204);
+    style.Colors[ImGuiCol_::ImGuiCol_TabUnfocused] =            ImColor(17, 26, 38, 248);
+    style.Colors[ImGuiCol_::ImGuiCol_TabUnfocusedActive] =      ImColor(35, 67, 108, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_Text] =                    ImColor(255, 255, 255, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TextDisabled] =            ImColor(128, 128, 128, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TextSelectedBg] =          ImColor(255, 0, 0, 128);
+    style.Colors[ImGuiCol_::ImGuiCol_TitleBg] =                 ImColor(80, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TitleBgActive] =           ImColor(151, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TitleBgCollapsed] =        ImColor(68, 26, 26, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_WindowBg] =                ImColor(56, 15, 15, 240);
+
 }
 
 void OCR_App::clearCanvas()
@@ -1029,56 +1079,52 @@ void OCR_App::renderStyleSettingsWindow()
     {
         ImGuiStyle& style = ImGui::GetStyle();
 
-        //if (ImGui::CollapsingHeader("Colors"))
-        {
-            ImGui::ColorEdit4("Border Color", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Border]);
-            ImGui::ColorEdit4("Border Shadow", (float*)&style.Colors[ImGuiCol_::ImGuiCol_BorderShadow]);
-            ImGui::ColorEdit4("Button", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Button]);
-            ImGui::ColorEdit4("Button Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ButtonActive]);
-            ImGui::ColorEdit4("Button Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ButtonHovered]);
-            ImGui::ColorEdit4("Check Mark", (float*)&style.Colors[ImGuiCol_::ImGuiCol_CheckMark]);
-            ImGui::ColorEdit4("Child Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ChildBg]);
-            ImGui::ColorEdit4("Dag And Drop Target", (float*)&style.Colors[ImGuiCol_::ImGuiCol_DragDropTarget]);
-            ImGui::ColorEdit4("Frame Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_FrameBg]);
-            ImGui::ColorEdit4("Frame Active Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_FrameBgActive]);
-            ImGui::ColorEdit4("Frame Hovered Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_FrameBgHovered]);
-            ImGui::ColorEdit4("PrimaryHeader", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Header]);
-            ImGui::ColorEdit4("PrimaryHeader Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_HeaderActive]);
-            ImGui::ColorEdit4("PrimaryHeader Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_HeaderHovered]);
-            ImGui::ColorEdit4("Menu Bar Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_MenuBarBg]);
-            ImGui::ColorEdit4("Modal Window Dim Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ModalWindowDimBg]);
-            ImGui::ColorEdit4("Nav Highlight", (float*)&style.Colors[ImGuiCol_::ImGuiCol_NavHighlight]);
-            ImGui::ColorEdit4("Nav Windowing Highlight", (float*)&style.Colors[ImGuiCol_::ImGuiCol_NavWindowingHighlight]);
-            ImGui::ColorEdit4("Plot Histogram Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_PlotHistogramHovered]);
-            ImGui::ColorEdit4("Plot Lines", (float*)&style.Colors[ImGuiCol_::ImGuiCol_PlotLines]);
-            ImGui::ColorEdit4("Popup Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_PopupBg]);
-            ImGui::ColorEdit4("Resize Grip", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ResizeGrip]);
-            ImGui::ColorEdit4("Resize Grip Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ResizeGripActive]);
-            ImGui::ColorEdit4("Resize Grip Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ResizeGripHovered]);
-            ImGui::ColorEdit4("Scrollbar Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarBg]);
-            ImGui::ColorEdit4("Scrollbar Grab", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrab]);
-            ImGui::ColorEdit4("Scrollbar Grab Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabActive]);
-            ImGui::ColorEdit4("Scrollbar Grab Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabHovered]);
-            ImGui::ColorEdit4("Separator", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Separator]);
-            ImGui::ColorEdit4("Separator Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SeparatorActive]);
-            ImGui::ColorEdit4("Separator Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SeparatorHovered]);
-            ImGui::ColorEdit4("Slider Grab", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SliderGrab]);
-            ImGui::ColorEdit4("Slider Grab Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SliderGrabActive]);
-            ImGui::ColorEdit4("Tab", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Tab]);
-            ImGui::ColorEdit4("Tab Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabActive]);
-            ImGui::ColorEdit4("Tab Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabHovered]);
-            ImGui::ColorEdit4("Tab Unfocused", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabUnfocused]);
-            ImGui::ColorEdit4("Tab Unfocused Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabUnfocusedActive]);
-            ImGui::ColorEdit4("Text", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Text]);
-            ImGui::ColorEdit4("Text Disabled", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TextDisabled]);
-            ImGui::ColorEdit4("Text Selected Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TextSelectedBg]);
-            ImGui::ColorEdit4("Title Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TitleBg]);
-            ImGui::ColorEdit4("Title Background Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TitleBgActive]);
-            ImGui::ColorEdit4("Title Background Collapsed", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TitleBgCollapsed]);
-            ImGui::ColorEdit4("WindowB Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_WindowBg]);
-
-        }
-
+        
+        ImGui::ColorEdit4("Border Color", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Border]);
+        ImGui::ColorEdit4("Border Shadow", (float*)&style.Colors[ImGuiCol_::ImGuiCol_BorderShadow]);
+        ImGui::ColorEdit4("Button", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Button]);
+        ImGui::ColorEdit4("Button Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ButtonActive]);
+        ImGui::ColorEdit4("Button Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ButtonHovered]);
+        ImGui::ColorEdit4("Check Mark", (float*)&style.Colors[ImGuiCol_::ImGuiCol_CheckMark]);
+        ImGui::ColorEdit4("Child Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ChildBg]);
+        ImGui::ColorEdit4("Dag And Drop Target", (float*)&style.Colors[ImGuiCol_::ImGuiCol_DragDropTarget]);
+        ImGui::ColorEdit4("Frame Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_FrameBg]);
+        ImGui::ColorEdit4("Frame Active Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_FrameBgActive]);
+        ImGui::ColorEdit4("Frame Hovered Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_FrameBgHovered]);
+        ImGui::ColorEdit4("PrimaryHeader", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Header]);
+        ImGui::ColorEdit4("PrimaryHeader Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_HeaderActive]);
+        ImGui::ColorEdit4("PrimaryHeader Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_HeaderHovered]);
+        ImGui::ColorEdit4("Menu Bar Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_MenuBarBg]);
+        ImGui::ColorEdit4("Modal Window Dim Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ModalWindowDimBg]);
+        ImGui::ColorEdit4("Nav Highlight", (float*)&style.Colors[ImGuiCol_::ImGuiCol_NavHighlight]);
+        ImGui::ColorEdit4("Nav Windowing Highlight", (float*)&style.Colors[ImGuiCol_::ImGuiCol_NavWindowingHighlight]);
+        ImGui::ColorEdit4("Plot Histogram Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_PlotHistogramHovered]);
+        ImGui::ColorEdit4("Plot Lines", (float*)&style.Colors[ImGuiCol_::ImGuiCol_PlotLines]);
+        ImGui::ColorEdit4("Popup Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_PopupBg]);
+        ImGui::ColorEdit4("Resize Grip", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ResizeGrip]);
+        ImGui::ColorEdit4("Resize Grip Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ResizeGripActive]);
+        ImGui::ColorEdit4("Resize Grip Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ResizeGripHovered]);
+        ImGui::ColorEdit4("Scrollbar Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarBg]);
+        ImGui::ColorEdit4("Scrollbar Grab", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrab]);
+        ImGui::ColorEdit4("Scrollbar Grab Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabActive]);
+        ImGui::ColorEdit4("Scrollbar Grab Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabHovered]);
+        ImGui::ColorEdit4("Separator", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Separator]);
+        ImGui::ColorEdit4("Separator Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SeparatorActive]);
+        ImGui::ColorEdit4("Separator Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SeparatorHovered]);
+        ImGui::ColorEdit4("Slider Grab", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SliderGrab]);
+        ImGui::ColorEdit4("Slider Grab Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SliderGrabActive]);
+        ImGui::ColorEdit4("Tab", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Tab]);
+        ImGui::ColorEdit4("Tab Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabActive]);
+        ImGui::ColorEdit4("Tab Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabHovered]);
+        ImGui::ColorEdit4("Tab Unfocused", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabUnfocused]);
+        ImGui::ColorEdit4("Tab Unfocused Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabUnfocusedActive]);
+        ImGui::ColorEdit4("Text", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Text]);
+        ImGui::ColorEdit4("Text Disabled", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TextDisabled]);
+        ImGui::ColorEdit4("Text Selected Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TextSelectedBg]);
+        ImGui::ColorEdit4("Title Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TitleBg]);
+        ImGui::ColorEdit4("Title Background Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TitleBgActive]);
+        ImGui::ColorEdit4("Title Background Collapsed", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TitleBgCollapsed]);
+        ImGui::ColorEdit4("WindowB Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_WindowBg]);
 
         ImGui::End();
     }
