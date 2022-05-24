@@ -154,6 +154,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\extlibs\imgui\imgui.cpp" />
+    <ClCompile Include="..\extlibs\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\extlibs\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\extlibs\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\extlibs\imgui\imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="OCR_App.cpp" />
   </ItemGroup>

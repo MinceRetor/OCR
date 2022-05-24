@@ -248,8 +248,20 @@ void OCR_App::renderPatternsWindow()
     {
         return;
     }
+    ImGui::Begin("Patterns##PatternsWindow", &m_isOpen_PatternsWindow, ImGuiWindowFlags_::ImGuiWindowFlags_MenuBar);
+    
 
-    ImGui::Begin("Patterns##PatternsWindow", &m_isOpen_PatternsWindow);
+    if (ImGui::BeginMenuBar())
+    {
+        ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, ImVec4(255, 0, 0, 255));
+        if (ImGui::MenuItem("Delete Selected##PatternsWindow"))
+        {
+            deleteSelectedPatterns();
+        }
+        ImGui::PopStyleColor();
+        ImGui::EndMenuBar();
+    }
+    
 
     ImVec2 windowContentRegionMin = ImGui::GetWindowContentRegionMin();
     ImVec2 windowContentRegionMax = ImGui::GetWindowContentRegionMax();
@@ -264,6 +276,7 @@ void OCR_App::renderPatternsWindow()
         if (ImGui::Selectable(characterString))
         {
             m_patternsWindowSelectedCharacter = characterString[0];
+            m_selectedPatternsToRemove.clear();
         }
     }
 
@@ -272,6 +285,7 @@ void OCR_App::renderPatternsWindow()
         if (ImGui::Selectable(characterString))
         {
             m_patternsWindowSelectedCharacter = characterString[0];
+            m_selectedPatternsToRemove.clear();
         }
     }
 
@@ -305,8 +319,22 @@ void OCR_App::renderPatternsWindow()
             std::string id = "##binaryImageButton";
             id += m_patternsWindowSelectedCharacter;
             id += std::to_string(i);
-            binaryImageButton(id.c_str(), characterPatterns[i], m_binaryImagePreviewButtonSize);
-            //binaryImagePreview(characterPatterns[i], m_binaryImagePreviewButtonSize);
+
+
+            bool selected = isSelectedPatternsToRemove(i);
+
+            if (selected)
+            {
+                ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_::ImGuiCol_ButtonActive));
+            }
+            if (binaryImageButton(id.c_str(), characterPatterns[i], m_binaryImagePreviewButtonSize))
+            {
+                selectOrUnselectPatternToRemove(i);
+            }
+            if (selected)
+            {
+                ImGui::PopStyleColor();
+            }
 
             cursorPos += m_binaryImagePreviewButtonSize.x;
         }
@@ -430,20 +458,6 @@ void OCR_App::renderModals()
 
         ImGui::EndPopup();
     }
-
-    /*
-    if (ImGui::BeginPopupModal("Failed to load the file"))
-    {
-
-        ImGui::EndPopup();
-    }
-
-    if (ImGui::BeginPopupModal("Failed to load file"))
-    {
-
-        ImGui::EndPopup();
-    }
-    */
 }
 
 void OCR_App::binaryImagePreview(const binaryImageType& image, const ImVec2& size)
@@ -716,6 +730,52 @@ bool OCR_App::getBinaryImageCellValue(const sf::Image& image, const sf::Rect<uin
     return false;
 }
 
+bool OCR_App::isSelectedPatternsToRemove(uint32_t patternIndex) const
+{
+    for (size_t i = 0; i < m_selectedPatternsToRemove.size(); i++)
+    {
+        if (m_selectedPatternsToRemove[i] == patternIndex)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void OCR_App::selectOrUnselectPatternToRemove(uint32_t patternIndex)
+{
+    for (size_t i = 0; i < m_selectedPatternsToRemove.size(); i++)
+    {
+        if (m_selectedPatternsToRemove[i] == patternIndex)
+        {
+            m_selectedPatternsToRemove.erase(m_selectedPatternsToRemove.begin() + i);
+            return;
+        }
+    }
+    m_selectedPatternsToRemove.push_back(patternIndex);
+}
+
+void OCR_App::deleteSelectedPatterns()
+{
+
+    if (m_patternsWindowSelectedCharacter == 0)
+    {
+        return;
+    }
+
+    auto& patterns = m_charactersPatterns[m_patternsWindowSelectedCharacter];
+
+
+    for (size_t i = 0; i < m_selectedPatternsToRemove.size(); i++)
+    {
+        if (m_selectedPatternsToRemove[i] < patterns.size())
+        {
+            patterns.erase(patterns.begin() + m_selectedPatternsToRemove[i]);
+        }
+    }
+    m_selectedPatternsToRemove.clear();
+}
+
 sf::Rect<uint32_t> OCR_App::getRectOfCharacter() const
 {
     sf::Vector2u min;
@@ -948,7 +1008,6 @@ void OCR_App::update()
     renderStyleSettingsWindow();
     renderModals();
 
-    
     ImGui::SFML::Render(m_window);
 
     m_window.display();

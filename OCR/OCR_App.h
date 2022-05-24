@@ -57,15 +57,11 @@ private:
 	float m_menuWindowWidthInPixels;
 
 	std::unordered_map<char, std::vector<binaryImageType>> m_charactersPatterns;
-
+	std::vector<uint32_t> m_selectedPatternsToRemove;
 
 
 	static ImU32 binaryImageViewColor;
 	static ImU32 binaryImageViewBackgroundColor;
-
-
-
-
 
 
 
@@ -91,6 +87,10 @@ private:
 	binaryImageType generateCharacterBinaryImage();
 
 	bool getBinaryImageCellValue(const sf::Image& image, const sf::Rect<uint32_t>& cell);
+
+	bool isSelectedPatternsToRemove(uint32_t patternIndex) const;
+	void selectOrUnselectPatternToRemove(uint32_t patternIndex);
+	void deleteSelectedPatterns();
 
 	sf::Rect<uint32_t> getRectOfCharacter() const;
 
