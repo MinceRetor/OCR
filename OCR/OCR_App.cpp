@@ -938,7 +938,7 @@ bool OCR_App::loadPatterns(const char* path, const char** errorMsg)
     filePos += 3;
 
 
-    if (std::string(fileType.data()) == "CPF")
+    if (std::string(fileType.data()) != "CPF")
     {
         if (errorMsg != nullptr)
         {
