@@ -14,10 +14,15 @@ OCR_App::OCR_App() :
     m_character('0'),
     m_endOfLine(0),
     m_recognizedCharacter(0),
+    m_patternsWindowSelectedCharacter(0),
     m_bitTolerance(15),
-    defaultPatternsFilePath("defaultPatterns.cpf"),
+    m_binaryImagePreviewButtonSize(100, 100),
+    m_defaultPatternsFilePath("defaultPatterns.cpf"),
     m_isOpen_RecognitionResultModal(false),
-    m_isOpen_LoadDefaultPatterns(true)
+    m_isOpen_LoadDefaultPatterns(true),
+    m_isOpen_PatternsWindow(false),
+    m_isOpen_StyleSettingsWindow(false),
+    m_loadFileErrorMsg(nullptr)
 {
     m_window.setFramerateLimit(60);
     ImGui::SFML::Init(m_window);
@@ -63,21 +68,31 @@ void OCR_App::renderMainWindowBar()
 {
     if(ImGui::BeginMainMenuBar())
     {
-        if (ImGui::BeginMenu("Patterns"))
+        if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::Selectable("Clear Paterns"))
-            {
-                m_charactersPatterns.clear();
-            }
-            if (ImGui::Selectable("Load Paterns"))
+            
+            if (ImGui::Selectable("Load Patterns"))
             {
                 NFD::UniquePath path;
                 if (NFD::OpenDialog(path, characterPatternsFileFilters, characterPatternsFileFiltersCount) == NFD_OKAY)
                 {
-                    m_fileLoadedResult = loadPatterns(path.get());
+                    m_charactersPatterns.clear();
+                    m_fileLoadedResult = loadPatterns(path.get(), &m_loadFileErrorMsg);
                     m_isOpen_LoadFileResult = true;
                 }
             }
+
+            if (ImGui::Selectable("Load Patterns Additive"))
+            {
+                NFD::UniquePath path;
+                if (NFD::OpenDialog(path, characterPatternsFileFilters, characterPatternsFileFiltersCount) == NFD_OKAY)
+                {
+                    m_fileLoadedResult = loadPatterns(path.get(), &m_loadFileErrorMsg);
+                    m_isOpen_LoadFileResult = true;
+                }
+            }
+            
+
             if (ImGui::Selectable("Save Patterns"))
             {
                 NFD::UniquePath path;
@@ -87,9 +102,36 @@ void OCR_App::renderMainWindowBar()
                 }
             }
 
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            if (ImGui::Selectable("Clear Patterns"))
+            {
+                m_charactersPatterns.clear();
+            }
+
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Edit"))
+        {
+            if (ImGui::Selectable("Patterns"))
+            {
+                m_isOpen_PatternsWindow = true;
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            if (ImGui::Selectable("Style"))
+            {
+                m_isOpen_StyleSettingsWindow = true;
+            }
+            
+            ImGui::EndMenu();
+        }
 
         ImGui::EndMainMenuBar();
     }
@@ -97,8 +139,8 @@ void OCR_App::renderMainWindowBar()
 
 void OCR_App::renderMenuWindow()
 {
-    ImGui::SetNextWindowSize(ImVec2(m_menuWindowWidthInPixels, m_window.getSize().y));
-    ImGui::SetNextWindowPos(ImVec2(m_window.getSize().x - m_menuWindowWidthInPixels, 0));
+    ImGui::SetNextWindowSize(ImVec2(m_menuWindowWidthInPixels, m_window.getSize().y - 20));
+    ImGui::SetNextWindowPos(ImVec2(m_window.getSize().x - m_menuWindowWidthInPixels, 20));
     ImGui::Begin("##MenuWindow", nullptr, ImGuiWindowFlags_::ImGuiWindowFlags_NoResize | ImGuiWindowFlags_::ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar);
 
 
@@ -106,6 +148,40 @@ void OCR_App::renderMenuWindow()
     characterLabel.resize(1);
     characterLabel[0] = m_character;
 
+    ImGui::Spacing();
+
+    binaryImagePreview(generateCharacterBinaryImage(), ImVec2(100, 100));
+
+    ImGui::Spacing();
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::Spacing();
+
+    if (ImGui::Button("Recognize"))
+    {
+        m_recognizedCharacter = recognize(generateCharacterBinaryImage());
+
+        m_isOpen_RecognitionResultModal = true;
+    }
+
+    ImGui::SameLine();
+
+    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+    if (ImGui::Button("Clear Canvas"))
+    {
+        clearCanvas();
+    }
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::Spacing();
+
+    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
     if (ImGui::BeginCombo("Character", characterLabel.c_str()))
     {
         for (char character = '0'; character <= '9'; character++)
@@ -118,16 +194,32 @@ void OCR_App::renderMenuWindow()
             }
         }
 
+        for (char character = 'A'; character <= 'Z'; character++)
+        {
+            characterLabel[0] = character;
+
+            if (ImGui::Selectable(characterLabel.c_str()))
+            {
+                m_character = character;
+            }
+        }
+
         ImGui::EndCombo();
     }
 
-    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-    if (ImGui::Button("Clear Canvas"))
+    ImGui::Spacing();
+
+    if (ImGui::Button("Add Pattern"))
     {
-        clearCanvas();
+        m_charactersPatterns[m_character].push_back(generateCharacterBinaryImage());
     }
 
-    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+    ImGui::Spacing();
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::Spacing();
+
     if (ImGui::Button("Show Character Bounding Box"))
     {
         sf::Rect<uint32_t> m_rect = getRectOfCharacter();
@@ -145,34 +237,111 @@ void OCR_App::renderMenuWindow()
         m_boundingBoxVertexArray[4] = sf::Vertex(sf::Vector2f(canvasPosition.x + m_rect.left, canvasPosition.y + m_rect.top), sf::Color::Red);
     }
 
-    ImGui::SetNextItemWidth(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-    /*
-    if (ImGui::Button("Binaryzuj"))
+    
+
+    ImGui::End();
+}
+
+void OCR_App::renderPatternsWindow()
+{
+    if (!m_isOpen_PatternsWindow)
     {
-        sf::Rect<uint32_t> m_rect = getRectOfCharacter();
-
-        std::bitset<64> bitset = generateCharacterBinaryImage();
-
-        std::cout << bitset << std::endl;
+        return;
     }
-    */
-    if (ImGui::Button("Recognize"))
+    ImGui::Begin("Patterns##PatternsWindow", &m_isOpen_PatternsWindow, ImGuiWindowFlags_::ImGuiWindowFlags_MenuBar);
+    
+
+    if (ImGui::BeginMenuBar())
     {
-        m_recognizedCharacter = recognize(generateCharacterBinaryImage());
-
-        m_isOpen_RecognitionResultModal = true;
+        ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, ImVec4(255, 0, 0, 255));
+        if (ImGui::MenuItem("Delete Selected##PatternsWindow"))
+        {
+            deleteSelectedPatterns();
+        }
+        ImGui::PopStyleColor();
+        ImGui::EndMenuBar();
     }
+    
 
-    ImGui::NewLine();
-    ImGui::NewLine();
-    ImGui::NewLine();
-    ImGui::NewLine();
-    ImGui::NewLine();
+    ImVec2 windowContentRegionMin = ImGui::GetWindowContentRegionMin();
+    ImVec2 windowContentRegionMax = ImGui::GetWindowContentRegionMax();
+    ImVec2 windowContentSize(windowContentRegionMax.x - windowContentRegionMin.x, windowContentRegionMax.y - windowContentRegionMin.y);
 
-    if (ImGui::Button("Add Pattern For Current Character"))
+    ImGui::BeginChild("##PatternsWindowCharactersList", ImVec2(windowContentSize.x * 0.1, windowContentSize.y), true);
+    char characterString[2];
+    characterString[1] = 0;
+
+    for (characterString[0] = '0'; characterString[0] <= '9'; characterString[0]++)
     {
-        m_charactersPatterns[m_character].push_back(generateCharacterBinaryImage());
+        if (ImGui::Selectable(characterString))
+        {
+            m_patternsWindowSelectedCharacter = characterString[0];
+            m_selectedPatternsToRemove.clear();
+        }
     }
+
+    for (characterString[0] = 'A'; characterString[0] <= 'Z'; characterString[0]++)
+    {
+        if (ImGui::Selectable(characterString))
+        {
+            m_patternsWindowSelectedCharacter = characterString[0];
+            m_selectedPatternsToRemove.clear();
+        }
+    }
+
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    float patternsChildWindowWidth = windowContentSize.x * 0.85;
+
+
+    ImGui::BeginChild("##PatternsWindowCharacter", ImVec2(patternsChildWindowWidth, windowContentSize.y), true);
+    if (m_patternsWindowSelectedCharacter)
+    {
+        auto& characterPatterns = m_charactersPatterns[m_patternsWindowSelectedCharacter];
+
+        ImVec2 patternsChildWindowRegionMax = ImGui::GetWindowContentRegionMax();
+
+        float cursorPos = 0;
+
+        for (size_t i = 0; i != characterPatterns.size(); i++)
+        {
+            if (cursorPos + m_binaryImagePreviewButtonSize.x > patternsChildWindowWidth)
+            {
+                cursorPos = 0;
+            }
+            else if (i > 0)
+            {
+                ImGui::SameLine();
+            }
+
+            std::string id = "##binaryImageButton";
+            id += m_patternsWindowSelectedCharacter;
+            id += std::to_string(i);
+
+
+            bool selected = isSelectedPatternsToRemove(i);
+
+            if (selected)
+            {
+                ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_::ImGuiCol_ButtonActive));
+            }
+            if (binaryImageButton(id.c_str(), characterPatterns[i], m_binaryImagePreviewButtonSize))
+            {
+                selectOrUnselectPatternToRemove(i);
+            }
+            if (selected)
+            {
+                ImGui::PopStyleColor();
+            }
+
+            cursorPos += m_binaryImagePreviewButtonSize.x;
+        }
+
+    }
+
+    ImGui::EndChild();
 
     ImGui::End();
 }
@@ -233,7 +402,7 @@ void OCR_App::renderModals()
         {
             if (ImGui::Button("Yes##LoadDefaultPatterns"))
             {
-                loadedDefaultPatternsStatus = loadPatterns(defaultPatternsFilePath);
+                loadedDefaultPatternsStatus = loadPatterns(m_defaultPatternsFilePath, &m_loadFileErrorMsg);
             }
 
             ImGui::SameLine();
@@ -253,6 +422,11 @@ void OCR_App::renderModals()
             else
             {
                 ImGui::TextColored(ImVec4(sf::Color::Red.r, sf::Color::Red.g, sf::Color::Red.b, 255), "Failed to load default patterns.");
+
+                if (m_loadFileErrorMsg != nullptr)
+                {
+                    ImGui::TextColored(ImVec4(sf::Color::Red.r, sf::Color::Red.g, sf::Color::Red.b, 255), m_loadFileErrorMsg);
+                }
             }
 
         }
@@ -270,6 +444,11 @@ void OCR_App::renderModals()
         else
         {
             ImGui::TextColored(ImVec4(sf::Color::Red.r, sf::Color::Red.g, sf::Color::Red.b, 255), "Failed to load patterns.");
+
+            if (m_loadFileErrorMsg != nullptr)
+            {
+                ImGui::TextColored(ImVec4(sf::Color::Red.r, sf::Color::Red.g, sf::Color::Red.b, 255), m_loadFileErrorMsg);
+            }
         }
 
         if (ImGui::IsMouseClicked(ImGuiMouseButton_::ImGuiMouseButton_Left))
@@ -279,20 +458,101 @@ void OCR_App::renderModals()
 
         ImGui::EndPopup();
     }
+}
 
-    /*
-    if (ImGui::BeginPopupModal("Failed to load the file"))
+void OCR_App::binaryImagePreview(const binaryImageType& image, const ImVec2& size)
+{
+    const ImVec2 cellSize(size.x / BINARY_IMAGE_WIDTH, size.y / BINARY_IMAGE_HEIGHT);
+
+    const ImVec2 startCursorPos = ImGui::GetCursorScreenPos();
+
+    ImGui::ItemSize(ImRect(startCursorPos, ImVec2(startCursorPos.x + size.x, startCursorPos.y + size.y)));
+
+    ImVec2 cursorPos = startCursorPos;
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    for (size_t cellY = 0; cellY < BINARY_IMAGE_HEIGHT; cellY++)
     {
+        for (size_t cellX = 0; cellX < BINARY_IMAGE_WIDTH; cellX++)
+        {
+            const ImU32* cellColor = nullptr;
 
-        ImGui::EndPopup();
+            if (image[cellY + (cellX * BINARY_IMAGE_HEIGHT)])
+            {
+                cellColor = &binaryImageViewColor;
+            }
+            else
+            {
+                cellColor = &binaryImageViewBackgroundColor;
+            }
+
+            draw_list->AddRectFilled(ImVec2(cursorPos.x, cursorPos.y), ImVec2(cursorPos.x + cellSize.x, cursorPos.y + cellSize.y), *cellColor);
+
+            cursorPos.x += cellSize.x;
+        }
+
+        cursorPos.x = startCursorPos.x;
+        cursorPos.y += cellSize.y;
+    }
+}
+
+bool OCR_App::binaryImageButton(const char* id, const binaryImageType& image, const ImVec2& size)
+{
+    ImVec2 imageSize = size;
+    imageSize.x *= 0.9;
+    imageSize.y *= 0.9;
+
+
+    ImVec2 cursorStartPos = ImGui::GetCursorPos();
+    ImVec2 imageStartCursorPos = cursorStartPos;
+    imageStartCursorPos.x += (size.x - imageSize.x) / 2;
+    imageStartCursorPos.y += (size.y - imageSize.y) / 2;
+
+
+    bool buttonResult = ImGui::Button(id, size);
+
+    ImVec2 buttonEndCursorPos = ImGui::GetCursorPos();
+
+
+    ImGui::SetCursorPos(imageStartCursorPos);
+
+    const ImVec2 cellSize(imageSize.x / BINARY_IMAGE_WIDTH, imageSize.y / BINARY_IMAGE_HEIGHT);
+
+    const ImVec2 startCursorPos = ImGui::GetCursorScreenPos();
+
+    ImVec2 cursorPos = startCursorPos;
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    for (size_t cellY = 0; cellY < BINARY_IMAGE_HEIGHT; cellY++)
+    {
+        for (size_t cellX = 0; cellX < BINARY_IMAGE_WIDTH; cellX++)
+        {
+            const ImU32* cellColor = nullptr;
+
+            if (image[cellY + (cellX * BINARY_IMAGE_HEIGHT)])
+            {
+                cellColor = &binaryImageViewColor;
+            }
+            else
+            {
+                cellColor = &binaryImageViewBackgroundColor;
+            }
+
+            draw_list->AddRectFilled(ImVec2(cursorPos.x, cursorPos.y), ImVec2(cursorPos.x + cellSize.x, cursorPos.y + cellSize.y), *cellColor);
+
+            cursorPos.x += cellSize.x;
+        }
+
+        cursorPos.x = startCursorPos.x;
+        cursorPos.y += cellSize.y;
     }
 
-    if (ImGui::BeginPopupModal("Failed to load file"))
-    {
 
-        ImGui::EndPopup();
-    }
-    */
+    ImGui::SetCursorPos(buttonEndCursorPos);
+
+    return buttonResult;
 }
 
 void OCR_App::configureGUI()
@@ -305,6 +565,56 @@ void OCR_App::configureGUI()
     m_canvasRect.setPosition(sf::Vector2f(contentSize.x - (contentSize.x / 2) - (m_canvasRect.getSize().x / 2), contentSize.y - (contentSize.y / 2) - (m_canvasRect.getSize().y / 2)));
 
     m_canvasRect.setTexture(&m_canvasTexture, true);
+
+    ImGuiStyle& style = ImGui::GetStyle();
+
+
+    style.Colors[ImGuiCol_::ImGuiCol_Border] =                  ImColor(255, 0, 0, 128);
+    style.Colors[ImGuiCol_::ImGuiCol_BorderShadow] =            ImColor(0, 0, 0, 0);
+    style.Colors[ImGuiCol_::ImGuiCol_Button] =                  ImColor(255, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_ButtonActive] =            ImColor(149, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_ButtonHovered] =           ImColor(255, 76, 76, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_CheckMark] =               ImColor(255, 255, 255, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ChildBg] =                 ImColor(0, 0, 0, 0);
+    style.Colors[ImGuiCol_::ImGuiCol_DragDropTarget] =          ImColor(0, 0, 0, 230);
+    style.Colors[ImGuiCol_::ImGuiCol_FrameBg] =                 ImColor(255, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_FrameBgActive] =           ImColor(149, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_FrameBgHovered] =          ImColor(255, 76, 76, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_Header] =                  ImColor(255, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_HeaderActive] =            ImColor(149, 0, 0, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_HeaderHovered] =           ImColor(255, 76, 76, 102);
+    style.Colors[ImGuiCol_::ImGuiCol_MenuBarBg] =               ImColor(80, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ModalWindowDimBg] =        ImColor(255, 255, 255, 89);
+    style.Colors[ImGuiCol_::ImGuiCol_NavHighlight] =            ImColor(0, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_NavWindowingHighlight] =   ImColor(0, 0, 0, 179);
+    style.Colors[ImGuiCol_::ImGuiCol_PlotHistogramHovered] =    ImColor(0, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_PlotLines] =               ImColor(0, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_PopupBg] =                 ImColor(80, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ResizeGrip] =              ImColor(184, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ResizeGripActive] =        ImColor(93, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ResizeGripHovered] =       ImColor(100, 62, 62, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ScrollbarBg] =             ImColor(5, 5, 5, 135);
+    style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrab] =           ImColor(79, 79, 79, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabActive] =     ImColor(130, 130, 130, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabHovered] =    ImColor(105, 105, 105, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_Separator] =               ImColor(178, 0, 0, 128);
+    style.Colors[ImGuiCol_::ImGuiCol_SeparatorActive] =         ImColor(26, 102, 191, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_SeparatorHovered] =        ImColor(26, 102, 191, 199);
+    style.Colors[ImGuiCol_::ImGuiCol_SliderGrab] =              ImColor(61, 133, 224, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_SliderGrabActive] =        ImColor(66, 150, 250, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_Tab] =                     ImColor(0, 0, 0, 220);
+    style.Colors[ImGuiCol_::ImGuiCol_TabActive] =               ImColor(51, 105, 173, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TabHovered] =              ImColor(66, 150, 250, 204);
+    style.Colors[ImGuiCol_::ImGuiCol_TabUnfocused] =            ImColor(17, 26, 38, 248);
+    style.Colors[ImGuiCol_::ImGuiCol_TabUnfocusedActive] =      ImColor(35, 67, 108, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_Text] =                    ImColor(255, 255, 255, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TextDisabled] =            ImColor(128, 128, 128, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TextSelectedBg] =          ImColor(255, 0, 0, 128);
+    style.Colors[ImGuiCol_::ImGuiCol_TitleBg] =                 ImColor(80, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TitleBgActive] =           ImColor(151, 0, 0, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_TitleBgCollapsed] =        ImColor(68, 26, 26, 255);
+    style.Colors[ImGuiCol_::ImGuiCol_WindowBg] =                ImColor(56, 15, 15, 240);
+
 }
 
 void OCR_App::clearCanvas()
@@ -316,7 +626,7 @@ void OCR_App::clearCanvas()
 
 void OCR_App::handleDrawing()
 {
-    if (m_isOpen_LoadDefaultPatterns || m_isOpen_RecognitionResultModal | m_isOpen_LoadFileResult)
+    if (m_isOpen_LoadDefaultPatterns || m_isOpen_RecognitionResultModal || m_isOpen_LoadFileResult || m_isOpen_StyleSettingsWindow || m_isOpen_PatternsWindow)
     {
         return;
     }
@@ -416,44 +726,46 @@ void OCR_App::drawLine(sf::Image& targetImage, sf::Vector2f pointA, sf::Vector2f
     }
 }
 
-uint64_t OCR_App::generateCharacterBinaryImage()
+binaryImageType OCR_App::generateCharacterBinaryImage()
 {
-    uint64_t value = 0;
-
-    //this value must be 8
-    uint8_t m_binaryImageResolution = 8;
-
     sf::Rect<uint32_t> characterRect = getRectOfCharacter();
 
-    float cellWidth = (float)(characterRect.width + 1) / m_binaryImageResolution;
-    float cellHeight = (float)(characterRect.height + 1) / m_binaryImageResolution;
+    float cellWidth = (float)(characterRect.width + 1) / BINARY_IMAGE_WIDTH;
+    float cellHeight = (float)(characterRect.height + 1) / BINARY_IMAGE_HEIGHT;
 
-    std::bitset<64> bitset;
+    std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> bitset;
 
-    for (size_t cellY = 0; cellY < m_binaryImageResolution; cellY++)
+    for (size_t cellY = 0; cellY < BINARY_IMAGE_HEIGHT; cellY++)
     {
-        for (size_t cellX = 0; cellX < m_binaryImageResolution; cellX++)
+        for (size_t cellX = 0; cellX < BINARY_IMAGE_WIDTH; cellX++)
         {
             if (!getBinaryImageCellValue(m_canvasImage, sf::Rect<uint32_t>(characterRect.left + (cellWidth * cellX), characterRect.top + (cellHeight * cellY), cellWidth, cellHeight)))
             {
-                //std::cout << '0';
-                bitset.set(cellY + (cellX * m_binaryImageResolution), false);
+                bitset.set(cellY + (cellX * BINARY_IMAGE_WIDTH), false);
                 continue;
             }
 
-            bitset.set(cellY + (cellX * m_binaryImageResolution), true);
-            //std::cout << '1';
+            bitset.set(cellY + (cellX * BINARY_IMAGE_HEIGHT), true);
         }
-
-        //std::cout << std::endl;
     }
 
-    return bitset.to_ullong();
+    return bitset;
 }
 
 bool OCR_App::getBinaryImageCellValue(const sf::Image& image, const sf::Rect<uint32_t>& cell)
 {
-    
+    sf::Vector2u imageSize = image.getSize();
+
+    if (cell.left > imageSize.x || cell.top > imageSize.y)
+    {
+        return false;
+    }
+
+    if (cell.left + cell.width > imageSize.x || cell.top + cell.height > imageSize.y)
+    {
+        return false;
+    }
+
     for (size_t x = 0; x < cell.width; x++)
     {
         for (size_t y = 0; y < cell.height; y++)
@@ -466,6 +778,52 @@ bool OCR_App::getBinaryImageCellValue(const sf::Image& image, const sf::Rect<uin
     }
 
     return false;
+}
+
+bool OCR_App::isSelectedPatternsToRemove(uint32_t patternIndex) const
+{
+    for (size_t i = 0; i < m_selectedPatternsToRemove.size(); i++)
+    {
+        if (m_selectedPatternsToRemove[i] == patternIndex)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void OCR_App::selectOrUnselectPatternToRemove(uint32_t patternIndex)
+{
+    for (size_t i = 0; i < m_selectedPatternsToRemove.size(); i++)
+    {
+        if (m_selectedPatternsToRemove[i] == patternIndex)
+        {
+            m_selectedPatternsToRemove.erase(m_selectedPatternsToRemove.begin() + i);
+            return;
+        }
+    }
+    m_selectedPatternsToRemove.push_back(patternIndex);
+}
+
+void OCR_App::deleteSelectedPatterns()
+{
+
+    if (m_patternsWindowSelectedCharacter == 0)
+    {
+        return;
+    }
+
+    auto& patterns = m_charactersPatterns[m_patternsWindowSelectedCharacter];
+
+
+    for (size_t i = 0; i < m_selectedPatternsToRemove.size(); i++)
+    {
+        if (m_selectedPatternsToRemove[i] < patterns.size())
+        {
+            patterns.erase(patterns.begin() + m_selectedPatternsToRemove[i]);
+        }
+    }
+    m_selectedPatternsToRemove.clear();
 }
 
 sf::Rect<uint32_t> OCR_App::getRectOfCharacter() const
@@ -510,43 +868,7 @@ sf::Rect<uint32_t> OCR_App::getRectOfCharacter() const
     return sf::Rect<uint32_t>(min.x, min.y, 1 + max.x - min.x, 1 + max.y - min.y);
 }
 
-void OCR_App::train(uint64_t binarydata)
-{
-    /*
-    std::bitset<64> bitset = binarydata;
-
-    std::vector<boost::numeric::ublas::vector<double>> trainingData;
-
-    trainingData.resize(1);
-    trainingData[0].resize(bitset.size());
-
-    for (size_t i = 0; i < bitset.size(); i++)
-    {
-        trainingData[0][i] = bitset[i];
-    }
-
-
-    //Initialize SOM object class
-    neuralnetworks::SelfOrganizingMaps obj(1, m_binaryImageResolution.x, m_binaryImageResolution.y);
-    puts("\nSOM Object initialization...done\n");
-
-    //Write to the SOM class object
-    obj.trainingData.swap(trainingData);
-    trainingData.clear();
-    puts("Train data written to SOM object");
-
-    //Weight Initialization
-    obj.weightsInitialization(0.1, 0.1);
-    puts("SOM Weights initialization...done");
-
-    //SOM TRAINING
-    //Use size/100 for bootstrap
-    obj.somTraining(100, 0.1);
-    puts("SOM Training...done");
-    */
-}
-
-char OCR_App::recognize(uint64_t binaryImage)
+char OCR_App::recognize(const binaryImageType& binaryImage)
 {
     uint16_t smallestDifference = 64;
     char mostAccurateCharacter = 0;
@@ -555,8 +877,8 @@ char OCR_App::recognize(uint64_t binaryImage)
     {
         for (auto patternIterator = characterIterator->second.begin(); patternIterator != characterIterator->second.end(); patternIterator++)
         {
-            uint16_t difference = countDifferentBits(binaryImage, *patternIterator);
-            if (countDifferentBits(binaryImage, *patternIterator) > m_bitTolerance)
+            uint16_t difference = countInconsistentBits(binaryImage, *patternIterator);
+            if (countInconsistentBits(binaryImage, *patternIterator) > m_bitTolerance)
             {
                 continue;
             }
@@ -572,22 +894,24 @@ char OCR_App::recognize(uint64_t binaryImage)
     return mostAccurateCharacter;
 }
 
-uint16_t OCR_App::countDifferentBits(uint64_t a, uint64_t b) const
+uint32_t OCR_App::countInconsistentBits(const binaryImageType& a, const binaryImageType& b) const
 {
-    std::bitset<64> bits = a ^ b;
+    std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> bits = a ^ b;
     return bits.count();
 }
 
-bool OCR_App::loadPatterns(const char* path)
+bool OCR_App::loadPatterns(const char* path, const char** errorMsg)
 {
-    m_charactersPatterns.clear();
-
     std::fstream file;
 
     file.open(path, std::ios::in | std::ios::ate | std::ios::binary);
 
     if (!file.is_open() || !file.good())
     {
+        if (errorMsg != nullptr)
+        {
+            *errorMsg = "Failed to open file.";
+        }
         return false;
     }
 
@@ -597,6 +921,50 @@ bool OCR_App::loadPatterns(const char* path)
     char character = 0;
     uint32_t patternCount = 0;
     size_t filePos = 0;
+
+
+    if (filePos + 3 + (2 * sizeof(uint32_t)) >= fileSize)
+    {
+        if (errorMsg != nullptr)
+        {
+            *errorMsg = "Failed to read file header.";
+        }
+        return false;
+    }
+
+    std::vector<char> fileType(3);
+
+    file.read(fileType.data(), 3);
+    filePos += 3;
+
+
+    if (std::string(fileType.data()) != "CPF")
+    {
+        if (errorMsg != nullptr)
+        {
+            *errorMsg = "File is not a CPF file.";
+        }
+        return false;
+    }
+
+
+    uint32_t binaryImageWidth = 0;
+    uint32_t binaryImageHeight = 0;
+
+    file.read((char*)&binaryImageWidth, sizeof(uint32_t));
+    file.read((char*)&binaryImageHeight, sizeof(uint32_t));
+    filePos += sizeof(uint32_t);
+    filePos += sizeof(uint32_t);
+
+
+    if (binaryImageWidth != BINARY_IMAGE_WIDTH || binaryImageHeight != BINARY_IMAGE_HEIGHT)
+    {
+        if (errorMsg != nullptr)
+        {
+            *errorMsg = "Patterns saved in file has different resolution than this program version use.";
+        }
+        return false;
+    }
 
 
     while (filePos < fileSize)
@@ -610,13 +978,16 @@ bool OCR_App::loadPatterns(const char* path)
 
         auto& characterPatterns = m_charactersPatterns[character];
 
-        characterPatterns.resize(patternCount);
-
         for (size_t patternIterator = 0; patternIterator < patternCount; patternIterator++)
         {
-            uint64_t pattern = 0;
-            file.read((char*)&characterPatterns[patternIterator], sizeof(uint64_t));
-            filePos += sizeof(uint64_t);
+            std::string data;
+            data.resize(BINARY_IMAGE_WIDTH * BINARY_IMAGE_HEIGHT);
+
+
+            file.read(&data[0], data.size());
+            filePos += data.size();
+
+            characterPatterns.push_back(binaryImageType(data));
         }
     }
 
@@ -637,6 +1008,13 @@ bool OCR_App::savePatterns(const char* path) const
         return false;
     }
 
+    static const uint32_t binaryImageWidth = BINARY_IMAGE_WIDTH;
+    static const uint32_t binaryImageHeight = BINARY_IMAGE_HEIGHT;
+
+    file.write("CPF", 3);
+    file.write((const char*)&binaryImageWidth, sizeof(uint32_t));
+    file.write((const char*)&binaryImageHeight, sizeof(uint32_t));
+
 
     for (auto characterIterator = m_charactersPatterns.begin(); characterIterator != m_charactersPatterns.end(); characterIterator++)
     {
@@ -647,7 +1025,8 @@ bool OCR_App::savePatterns(const char* path) const
 
         for (auto patternIterator = characterIterator->second.begin(); patternIterator != characterIterator->second.end(); patternIterator++)
         {
-            file.write((const char*)&*patternIterator, sizeof(uint64_t));
+            std::string data = patternIterator->to_string();
+            file.write(data.data(), data.size());
         }
     }
 
@@ -675,9 +1054,10 @@ void OCR_App::update()
 
     renderMainWindowBar();
     renderMenuWindow();
+    renderPatternsWindow();
+    renderStyleSettingsWindow();
     renderModals();
 
-    
     ImGui::SFML::Render(m_window);
 
     m_window.display();
@@ -687,3 +1067,69 @@ bool OCR_App::isOpen() const
 {
 	return m_window.isOpen();
 }
+
+void OCR_App::renderStyleSettingsWindow()
+{
+    if (!m_isOpen_StyleSettingsWindow)
+    {
+        return;
+    }
+
+    if (ImGui::Begin("Style Settings", &m_isOpen_StyleSettingsWindow))
+    {
+        ImGuiStyle& style = ImGui::GetStyle();
+
+        
+        ImGui::ColorEdit4("Border Color", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Border]);
+        ImGui::ColorEdit4("Border Shadow", (float*)&style.Colors[ImGuiCol_::ImGuiCol_BorderShadow]);
+        ImGui::ColorEdit4("Button", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Button]);
+        ImGui::ColorEdit4("Button Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ButtonActive]);
+        ImGui::ColorEdit4("Button Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ButtonHovered]);
+        ImGui::ColorEdit4("Check Mark", (float*)&style.Colors[ImGuiCol_::ImGuiCol_CheckMark]);
+        ImGui::ColorEdit4("Child Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ChildBg]);
+        ImGui::ColorEdit4("Dag And Drop Target", (float*)&style.Colors[ImGuiCol_::ImGuiCol_DragDropTarget]);
+        ImGui::ColorEdit4("Frame Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_FrameBg]);
+        ImGui::ColorEdit4("Frame Active Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_FrameBgActive]);
+        ImGui::ColorEdit4("Frame Hovered Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_FrameBgHovered]);
+        ImGui::ColorEdit4("PrimaryHeader", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Header]);
+        ImGui::ColorEdit4("PrimaryHeader Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_HeaderActive]);
+        ImGui::ColorEdit4("PrimaryHeader Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_HeaderHovered]);
+        ImGui::ColorEdit4("Menu Bar Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_MenuBarBg]);
+        ImGui::ColorEdit4("Modal Window Dim Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ModalWindowDimBg]);
+        ImGui::ColorEdit4("Nav Highlight", (float*)&style.Colors[ImGuiCol_::ImGuiCol_NavHighlight]);
+        ImGui::ColorEdit4("Nav Windowing Highlight", (float*)&style.Colors[ImGuiCol_::ImGuiCol_NavWindowingHighlight]);
+        ImGui::ColorEdit4("Plot Histogram Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_PlotHistogramHovered]);
+        ImGui::ColorEdit4("Plot Lines", (float*)&style.Colors[ImGuiCol_::ImGuiCol_PlotLines]);
+        ImGui::ColorEdit4("Popup Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_PopupBg]);
+        ImGui::ColorEdit4("Resize Grip", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ResizeGrip]);
+        ImGui::ColorEdit4("Resize Grip Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ResizeGripActive]);
+        ImGui::ColorEdit4("Resize Grip Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ResizeGripHovered]);
+        ImGui::ColorEdit4("Scrollbar Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarBg]);
+        ImGui::ColorEdit4("Scrollbar Grab", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrab]);
+        ImGui::ColorEdit4("Scrollbar Grab Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabActive]);
+        ImGui::ColorEdit4("Scrollbar Grab Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_ScrollbarGrabHovered]);
+        ImGui::ColorEdit4("Separator", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Separator]);
+        ImGui::ColorEdit4("Separator Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SeparatorActive]);
+        ImGui::ColorEdit4("Separator Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SeparatorHovered]);
+        ImGui::ColorEdit4("Slider Grab", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SliderGrab]);
+        ImGui::ColorEdit4("Slider Grab Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_SliderGrabActive]);
+        ImGui::ColorEdit4("Tab", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Tab]);
+        ImGui::ColorEdit4("Tab Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabActive]);
+        ImGui::ColorEdit4("Tab Hovered", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabHovered]);
+        ImGui::ColorEdit4("Tab Unfocused", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabUnfocused]);
+        ImGui::ColorEdit4("Tab Unfocused Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TabUnfocusedActive]);
+        ImGui::ColorEdit4("Text", (float*)&style.Colors[ImGuiCol_::ImGuiCol_Text]);
+        ImGui::ColorEdit4("Text Disabled", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TextDisabled]);
+        ImGui::ColorEdit4("Text Selected Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TextSelectedBg]);
+        ImGui::ColorEdit4("Title Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TitleBg]);
+        ImGui::ColorEdit4("Title Background Active", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TitleBgActive]);
+        ImGui::ColorEdit4("Title Background Collapsed", (float*)&style.Colors[ImGuiCol_::ImGuiCol_TitleBgCollapsed]);
+        ImGui::ColorEdit4("WindowB Background", (float*)&style.Colors[ImGuiCol_::ImGuiCol_WindowBg]);
+
+        ImGui::End();
+    }
+}
+
+
+ImU32 OCR_App::binaryImageViewColor(ImColor(0, 0, 0, 255));
+ImU32 OCR_App::binaryImageViewBackgroundColor(ImColor(255, 255, 255, 255));

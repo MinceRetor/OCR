@@ -6,11 +6,19 @@
 #include <unordered_map>
 #include <nfd.hpp>
 #include <fstream>
+#include <iostream>
+#include <imgui_internal.h>
 
+#define BINARY_IMAGE_WIDTH 10
+#define BINARY_IMAGE_HEIGHT 10
+#define MAX_INCONSISTENT_BITS 35
+
+typedef std::bitset<BINARY_IMAGE_WIDTH* BINARY_IMAGE_HEIGHT> binaryImageType;
 
 class OCR_App
 {
 private:
+
 	sf::RenderWindow m_window;
 	sf::Texture m_canvasTexture;
 	sf::Image m_canvasImage;
@@ -23,8 +31,10 @@ private:
 
 	sf::VertexArray m_boundingBoxVertexArray;
 
-	const char* defaultPatternsFilePath;
+	const char* m_defaultPatternsFilePath;
+	const char* m_loadFileErrorMsg;
 
+	char m_patternsWindowSelectedCharacter;
 	char m_character;
 
 	char m_recognizedCharacter;
@@ -33,26 +43,40 @@ private:
 	uint8_t m_bitTolerance;
 
 	sf::Vector2f m_lastMousePositionInImage;
+	ImVec2 m_binaryImagePreviewButtonSize;
 
 	bool m_fileLoadedResult;
 	bool m_lastMousePositionInImageInitialized;
 	bool m_isOpen_RecognitionResultModal;
 	bool m_isOpen_LoadDefaultPatterns;
 	bool m_isOpen_LoadFileResult;
+	bool m_isOpen_PatternsWindow;
+	bool m_isOpen_StyleSettingsWindow;
 
 	float m_menuWindowSizePercentage;
 	float m_menuWindowWidthInPixels;
 
-	sf::Vector2u m_binaryImageResolution;
+	std::unordered_map<char, std::vector<binaryImageType>> m_charactersPatterns;
+	std::vector<uint32_t> m_selectedPatternsToRemove;
 
-	std::unordered_map<char, std::vector<uint64_t>> m_charactersPatterns;
+
+	static ImU32 binaryImageViewColor;
+	static ImU32 binaryImageViewBackgroundColor;
+
+
+
 
 	void handleEvents();
 
 
 	void renderMainWindowBar();
 	void renderMenuWindow();
+	void renderPatternsWindow();
+	void renderStyleSettingsWindow();
 	void renderModals();
+
+	void binaryImagePreview(const binaryImageType& image, const ImVec2& size);
+	bool binaryImageButton(const char* id, const binaryImageType& image, const ImVec2& size);
 
 	void configureGUI();
 	void clearCanvas();
@@ -60,20 +84,21 @@ private:
 	void handleDrawing();
 	void drawLine(sf::Image& targetImage, sf::Vector2f pointA, sf::Vector2f pointB);
 
-	uint64_t generateCharacterBinaryImage();
+	binaryImageType generateCharacterBinaryImage();
 
 	bool getBinaryImageCellValue(const sf::Image& image, const sf::Rect<uint32_t>& cell);
 
+	bool isSelectedPatternsToRemove(uint32_t patternIndex) const;
+	void selectOrUnselectPatternToRemove(uint32_t patternIndex);
+	void deleteSelectedPatterns();
+
 	sf::Rect<uint32_t> getRectOfCharacter() const;
 
-	void train(uint64_t binarydata);
+	char recognize(const binaryImageType& binaryImage);
 
+	uint32_t countInconsistentBits(const binaryImageType& a, const binaryImageType& b) const;
 
-	char recognize(uint64_t binaryImage);
-
-	uint16_t countDifferentBits(uint64_t a, uint64_t b) const;
-
-	bool loadPatterns(const char* path);
+	bool loadPatterns(const char* path, const char** errorMsg = nullptr);
 	bool savePatterns(const char* path) const;
 
 public:

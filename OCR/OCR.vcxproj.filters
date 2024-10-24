@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Pliki źródłowe\ImGui">
+      <UniqueIdentifier>{c6ccd36b-3d65-4991-8fa8-cf89c7a39ef6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -20,6 +23,21 @@
     </ClCompile>
     <ClCompile Include="OCR_App.cpp">
       <Filter>Pliki źródłowe</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extlibs\imgui\imgui.cpp">
+      <Filter>Pliki źródłowe\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extlibs\imgui\imgui_demo.cpp">
+      <Filter>Pliki źródłowe\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extlibs\imgui\imgui_draw.cpp">
+      <Filter>Pliki źródłowe\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extlibs\imgui\imgui_tables.cpp">
+      <Filter>Pliki źródłowe\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extlibs\imgui\imgui_widgets.cpp">
+      <Filter>Pliki źródłowe\ImGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
